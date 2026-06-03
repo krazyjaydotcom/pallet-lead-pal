@@ -4,9 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, User, Lock, Trash } from "lucide-react";
+import { ArrowLeft, User, Lock } from "lucide-react";
 import { PasswordChangeForm } from "@/components/PasswordChangeForm";
-import ResetDataCard from "@/components/ResetDataCard";
 
 const Settings = () => {
   const { user, loading, signOut } = useAuth();
@@ -38,11 +37,11 @@ const Settings = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/")}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
+              Back to CRM
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Settings</h1>
           </div>
@@ -59,7 +58,7 @@ const Settings = () => {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               Profile
@@ -67,10 +66,6 @@ const Settings = () => {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Lock className="w-4 h-4" />
               Security
-            </TabsTrigger>
-            <TabsTrigger value="data" className="flex items-center gap-2">
-              <Trash className="w-4 h-4" />
-              Data
             </TabsTrigger>
           </TabsList>
 
@@ -113,12 +108,6 @@ const Settings = () => {
             <div className="flex justify-center">
               <PasswordChangeForm />
             </div>
-          </TabsContent>
-
-          <TabsContent value="data" className="space-y-6 mt-6">
-            {/* Reset data actions */}
-            {/* ... keep existing code (other settings content) */}
-            <ResetDataCard />
           </TabsContent>
         </Tabs>
       </main>

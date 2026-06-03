@@ -71,8 +71,8 @@ const Auth = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Pallet Pros Academy</CardTitle>
-          <p className="text-gray-600">Internal Access Portal</p>
+          <CardTitle className="text-2xl font-bold">Pallet Business CRM</CardTitle>
+          <p className="text-gray-600">Sign in to manage your leads</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
