@@ -1,0 +1,4 @@
+project_id = "deszonodkvxnqjwnvjmw"
+
+[functions.public-kpi-submit]
+verify_jwt = false
