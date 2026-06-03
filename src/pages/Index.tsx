@@ -29,12 +29,9 @@ const Index = () => {
   const [serviceFilter, setServiceFilter] = useState('all');
   const [forklifitFilter, setForklifitFilter] = useState('all');
 
-  // Check if coming from dashboard route, if not redirect authenticated users to dashboard
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/auth');
-    } else if (!loading && isAuthenticated && window.location.pathname === '/') {
-      navigate('/dashboard');
     }
   }, [loading, isAuthenticated, navigate]);
 
