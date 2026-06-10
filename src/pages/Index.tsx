@@ -210,14 +210,10 @@ const parseSwipePagesEmail = (text: string): Partial<Lead> => {
   };
 };
 
-const StatusPill = ({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "slate" | "amber" }) => {
-  const tones = {
-    blue: "bg-blue-500/90 text-white shadow-[0_0_24px_rgba(37,99,235,.26)]",
-    slate: "bg-slate-700/70 text-slate-100",
-    amber: "bg-amber-500/90 text-slate-950",
-  };
-
-  return <span className={`rounded-md px-3 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+const pillClass = {
+  blue: "bg-blue-500/90 text-white shadow-[0_0_24px_rgba(37,99,235,.26)]",
+  slate: "bg-slate-700/70 text-slate-100",
+  amber: "bg-amber-500/90 text-slate-950",
 };
 
 const Index = () => {
@@ -536,14 +532,16 @@ const Index = () => {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xl font-bold text-white">{account.label}</p>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            <StatusPill tone={tag === "Due Today" ? "blue" : tag === "No Next Step" ? "slate" : "blue"}>
+                            <span
+                              className={`rounded-md px-3 py-1 text-xs font-medium ${tag === "Due Today" ? pillClass.blue : pillClass.blue}`}
+                            >
                               {tag}
-                            </StatusPill>
-                            <StatusPill tone="slate">
+                            </span>
+                            <span className={`rounded-md px-3 py-1 text-xs font-medium ${pillClass.slate}`}>
                               {account.tags.find((tag) => !tag.startsWith("source:")) ||
                                 account.sources[0] ||
                                 "Industrial"}
-                            </StatusPill>
+                            </span>
                           </div>
                           <div className="mt-3 flex gap-4 text-slate-300">
                             <Mail className="h-5 w-5" />
