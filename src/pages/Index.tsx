@@ -8,6 +8,8 @@ import {
   Camera,
   ChevronRight,
   Inbox,
+  Clock,
+  Copy,
   LogOut,
   Mail,
   Phone,
@@ -24,7 +26,6 @@ import {
   X,
   CheckCircle,
   ArrowLeft,
-  Copy,
 } from "lucide-react";
 import { LeadTable } from "@/components/LeadTable";
 import ChartsDashboard from "@/components/ChartsDashboard";
@@ -37,20 +38,6 @@ import { useLeads } from "@/hooks/useLeads";
 
 type ViewKey = "dashboard" | "intake" | "add" | "leads" | "reports" | "settings";
 
-type AccountGroup = {
-  key: string;
-  label: string;
-  company: string;
-  leads: Lead[];
-  emails: string[];
-  phones: string[];
-  sources: string[];
-  tags: string[];
-  nextFollowUp: string | null;
-  status: Lead["status"];
-};
-
-// ── Pure helpers ──────────────────────────────────────────────────────────────
 const todayIso = () => new Date().toISOString().split("T")[0];
 const tomorrowIso = () => {
   const d = new Date();
@@ -94,6 +81,20 @@ const initialsFor = (label: string) =>
     .map((w) => w[0])
     .join("")
     .toUpperCase() || "PP";
+
+type AccountGroup = {
+  key: string;
+  label: string;
+  company: string;
+  leads: Lead[];
+  emails: string[];
+  phones: string[];
+  sources: string[];
+  tags: string[];
+  nextFollowUp: string | null;
+  status: Lead["status"];
+  address?: string;
+};
 
 const buildAccounts = (leads: Lead[]): AccountGroup[] => {
   const groups = new Map<string, AccountGroup>();
@@ -177,23 +178,25 @@ const parseSwipePagesEmail = (text: string): Partial<Lead> => {
   };
 };
 
-// ── GPS helpers (free, no API key) ────────────────────────────────────────────
-const openNavigation = (label: string, app: "google" | "waze") => {
-  const q = encodeURIComponent(label);
-  const url =
-    app === "waze"
-      ? `https://waze.com/ul?q=${q}&navigate=yes`
-      : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+// GPS Navigation helpers — opens free native app, no API key needed
+const buildGoogleMapsUrl = (address: string) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+const buildWazeUrl = (address: string) => `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+
+const openNavigation = (address: string, app: "google" | "waze") => {
+  const url = app === "waze" ? buildWazeUrl(address) : buildGoogleMapsUrl(address);
   window.open(url, "_blank");
 };
 
-// ── Style constants ───────────────────────────────────────────────────────────
-const STATUS_COLOR: Record<string, string> = {
+// Status pill colors
+const statusColor: Record<string, string> = {
   Client: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
   Contacted: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
   New: "bg-amber-500/20 text-amber-300 border border-amber-500/30",
   "Due Today": "bg-red-500/20 text-red-300 border border-red-500/30",
 };
+
+// Avatar color palette
 const AVATAR_COLORS = [
   "from-blue-500 to-indigo-600",
   "from-emerald-500 to-teal-600",
@@ -204,50 +207,54 @@ const AVATAR_COLORS = [
 ];
 const avatarColor = (label: string) => AVATAR_COLORS[label.charCodeAt(0) % AVATAR_COLORS.length];
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-const RoutePanel = ({ account, onClose }: { account: AccountGroup; onClose: () => void }) => (
-  <div className="lux-panel rounded-3xl p-5 space-y-4 lux-fade">
-    <div className="flex items-center justify-between">
-      <h2 className="text-xl font-bold text-white">Navigate to</h2>
-      <button
-        onClick={onClose}
-        className="h-9 w-9 grid place-items-center rounded-full bg-slate-800 text-slate-400 hover:text-white"
-      >
-        <X className="h-5 w-5" />
-      </button>
-    </div>
-    <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4">
-      <p className="text-lg font-semibold text-white">{account.label}</p>
-      <p className="text-sm text-slate-400 mt-1">
-        {account.leads[0]?.palletNeeds || "Add a full address in lead notes for best results"}
-      </p>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <button
-        onClick={() => openNavigation(account.label, "google")}
-        className="flex flex-col items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 hover:bg-slate-800 transition"
-      >
-        <div className="h-12 w-12 rounded-full bg-blue-600/20 grid place-items-center">
-          <Map className="h-6 w-6 text-blue-400" />
-        </div>
-        <span className="text-sm font-semibold text-white">Google Maps</span>
-        <span className="text-xs text-slate-400">Free</span>
-      </button>
-      <button
-        onClick={() => openNavigation(account.label, "waze")}
-        className="flex flex-col items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 hover:bg-slate-800 transition"
-      >
-        <div className="h-12 w-12 rounded-full bg-cyan-600/20 grid place-items-center">
-          <Navigation className="h-6 w-6 text-cyan-400" />
-        </div>
-        <span className="text-sm font-semibold text-white">Waze</span>
-        <span className="text-xs text-slate-400">Free · Live traffic</span>
-      </button>
-    </div>
-    <p className="text-xs text-slate-500 text-center">Tip: Add a full street address in lead notes for best results</p>
-  </div>
-);
+// ─── Nav route detail panel ───────────────────────────────────────────────────
+const RoutePanel = ({ account, onClose }: { account: AccountGroup; onClose: () => void }) => {
+  const address = account.leads[0]?.company ? `${account.label}, ${account.leads[0].palletNeeds || ""}` : account.label;
+  const displayAddress = account.leads[0]?.palletNeeds || `${account.label} — add address in notes`;
 
+  return (
+    <div className="lux-panel rounded-3xl p-5 space-y-4 lux-fade">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Navigate to</h2>
+        <button
+          onClick={onClose}
+          className="h-9 w-9 grid place-items-center rounded-full bg-slate-800 text-slate-400 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="rounded-2xl bg-slate-900/60 border border-slate-700/50 p-4">
+        <p className="text-lg font-semibold text-white">{account.label}</p>
+        <p className="text-sm text-slate-400 mt-1">{displayAddress}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => openNavigation(account.label, "google")}
+          className="flex flex-col items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 hover:bg-slate-800 transition"
+        >
+          <div className="h-12 w-12 rounded-full bg-blue-600/20 grid place-items-center">
+            <Map className="h-6 w-6 text-blue-400" />
+          </div>
+          <span className="text-sm font-semibold text-white">Google Maps</span>
+          <span className="text-xs text-slate-400">Free</span>
+        </button>
+        <button
+          onClick={() => openNavigation(account.label, "waze")}
+          className="flex flex-col items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-4 hover:bg-slate-800 transition"
+        >
+          <div className="h-12 w-12 rounded-full bg-cyan-600/20 grid place-items-center">
+            <Navigation className="h-6 w-6 text-cyan-400" />
+          </div>
+          <span className="text-sm font-semibold text-white">Waze</span>
+          <span className="text-xs text-slate-400">Free · Live traffic</span>
+        </button>
+      </div>
+      <p className="text-xs text-slate-500 text-center">Tip: Add a full address in lead notes for best results</p>
+    </div>
+  );
+};
+
+// ─── Lead card ────────────────────────────────────────────────────────────────
 const LeadCard = ({
   account,
   isSelected,
@@ -267,6 +274,7 @@ const LeadCard = ({
         : account.status === "New"
           ? "New"
           : "Contacted";
+
   return (
     <button
       onClick={onClick}
@@ -284,7 +292,7 @@ const LeadCard = ({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-base font-bold text-white truncate">{account.label}</p>
             <span
-              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLOR[tag] || STATUS_COLOR.New}`}
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor[tag] || statusColor.New}`}
             >
               {tag}
             </span>
@@ -331,12 +339,11 @@ const LeadCard = ({
   );
 };
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 const Index = () => {
   const { loading, signOut, isAuthenticated } = useAuth();
   const { leads, loading: leadsLoading, addLeads, updateLead, deleteLead } = useLeads();
   const navigate = useNavigate();
-
   const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -368,19 +375,19 @@ const Index = () => {
   const primaryLead = selectedAccount?.leads[0];
   const dueToday = accounts.filter((a) => a.nextFollowUp && a.nextFollowUp <= todayIso()).length;
   const needsReply = accounts.filter((a) => a.status === "New" || a.tags.includes("needs-reply")).length;
+  const stuckDeals = accounts.filter((a) => !a.nextFollowUp && a.status !== "Client").length;
   const newLeads = accounts.filter((a) => a.status === "New").length;
   const clientCount = accounts.filter((a) => a.status === "Client").length;
 
-  const handleCSVImport = (importedLeads: Lead[]) =>
+  const handleCSVImport = (importedLeads: Lead[]) => {
     addLeads(
       importedLeads.map((l) => ({ ...l, source: "csv", tags: uniqueValues([...(l.tags || []), "source:csv"]) })),
     );
-
+  };
   const handleSignOut = async () => {
     await signOut();
     toast.success("Signed out");
   };
-
   const handleCopyEmails = async () => {
     const emails = uniqueValues(visibleAccounts.flatMap((a) => a.emails)).join(", ");
     if (emails) {
@@ -388,7 +395,6 @@ const Index = () => {
       toast.success("Emails copied");
     } else toast.error("No emails found");
   };
-
   const handleSwipeEmailImport = () => {
     const parsed = parseSwipePagesEmail(swipeEmailText);
     if (!parsed.email && !parsed.phone && !parsed.company) {
@@ -407,7 +413,6 @@ const Index = () => {
     setSwipeEmailText("");
     setActiveView("dashboard");
   };
-
   const handleReceiptCapture = (lead: Lead, file?: File) => {
     if (!file) return;
     updateLead({
@@ -428,7 +433,6 @@ const Index = () => {
       </div>
     );
   }
-
   if (!isAuthenticated) return null;
 
   const bottomNav = [
@@ -443,37 +447,37 @@ const Index = () => {
     <div className="min-h-screen bg-[#020914] text-slate-100">
       <style>{`
         @keyframes fadeUp {
-          from { opacity:0; transform:translateY(12px); }
-          to   { opacity:1; transform:translateY(0); }
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes softPulse {
           0%,100% { opacity:.55; transform:scale(1); }
-          50%     { opacity:.9;  transform:scale(1.04); }
+          50%      { opacity:.9;  transform:scale(1.04); }
         }
         .lux-panel {
-          background: linear-gradient(145deg,rgba(11,27,45,.93),rgba(3,13,26,.97));
+          background: linear-gradient(145deg, rgba(11,27,45,.93), rgba(3,13,26,.97));
           border: 1px solid rgba(125,169,217,.16);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,.04),0 20px 60px rgba(0,0,0,.22);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 20px 60px rgba(0,0,0,.22);
         }
         .lux-card {
-          background: linear-gradient(145deg,rgba(15,35,57,.84),rgba(4,16,30,.92));
+          background: linear-gradient(145deg, rgba(15,35,57,.84), rgba(4,16,30,.92));
           border: 1px solid rgba(127,174,225,.14);
         }
         .lux-glow {
-          box-shadow: 0 0 0 1px rgba(0,128,255,.7),0 0 28px rgba(0,119,255,.15),inset 0 1px 0 rgba(255,255,255,.05);
+          box-shadow: 0 0 0 1px rgba(0,128,255,.7), 0 0 28px rgba(0,119,255,.15), inset 0 1px 0 rgba(255,255,255,.05);
         }
         .lux-fade { animation: fadeUp .38s ease both; }
       `}</style>
 
       {/* Ambient blobs */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-24 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl animate-[softPulse_6s_ease-in-out_infinite]" />
-        <div className="absolute top-1/3 right-0 h-56 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute -top-24 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-600/18 blur-3xl animate-[softPulse_6s_ease-in-out_infinite]" />
+        <div className="absolute top-1/3 right-0 h-56 w-40 rounded-full bg-cyan-500/8 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-72 w-48 rounded-full bg-blue-700/10 blur-3xl" />
       </div>
 
       <main className="relative mx-auto min-h-screen max-w-lg px-4 pb-28 pt-5">
-        {/* Header */}
+        {/* ── Header ── */}
         <header className="mb-5 flex items-center justify-between lux-fade">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-white">
@@ -504,7 +508,7 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Collapsible search */}
+        {/* ── Search bar (collapsible) ── */}
         {showSearch && (
           <div className="mb-4 lux-fade">
             <div className="relative">
@@ -525,96 +529,97 @@ const Index = () => {
           </div>
         )}
 
-        {/* ── DASHBOARD ── */}
+        {/* ══════════════════ DASHBOARD ══════════════════ */}
         {activeView === "dashboard" && (
           <section className="space-y-4 lux-fade">
-            {navAccount ? (
-              <RoutePanel account={navAccount} onClose={() => setNavAccount(null)} />
-            ) : (
-              <>
-                {/* Stats */}
-                <div className="grid grid-cols-4 gap-2">
-                  {(
-                    [
-                      { label: "Total", value: accounts.length, icon: Users, color: "text-slate-300" },
-                      { label: "New", value: newLeads, icon: UserPlus, color: "text-amber-400" },
-                      { label: "Due", value: dueToday, icon: CalendarClock, color: "text-red-400" },
-                      { label: "Clients", value: clientCount, icon: CheckCircle, color: "text-emerald-400" },
-                    ] as const
-                  ).map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className="lux-card rounded-2xl p-3 flex flex-col items-center gap-1">
-                      <Icon className={`h-5 w-5 ${color}`} />
-                      <p className="text-2xl font-black text-white leading-none">{value}</p>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</p>
-                    </div>
-                  ))}
-                </div>
+            {/* Nav route panel (shown when Navigate tapped) */}
+            {navAccount && <RoutePanel account={navAccount} onClose={() => setNavAccount(null)} />}
 
-                {/* Recent leads */}
-                <div className="lux-panel rounded-3xl overflow-hidden">
-                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                    <h2 className="text-base font-bold text-white">Recent Leads</h2>
-                    <button
-                      onClick={() => setActiveView("leads")}
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                    >
-                      View all <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
+            {/* 4-stat row */}
+            {!navAccount && (
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "Total", value: accounts.length, icon: Users, color: "text-slate-300" },
+                  { label: "New", value: newLeads, icon: UserPlus, color: "text-amber-400" },
+                  { label: "Due", value: dueToday, icon: CalendarClock, color: "text-red-400" },
+                  { label: "Clients", value: clientCount, icon: CheckCircle, color: "text-emerald-400" },
+                ].map(({ label, value, icon: Icon, color }) => (
+                  <div key={label} className="lux-card rounded-2xl p-3 flex flex-col items-center gap-1">
+                    <Icon className={`h-5 w-5 ${color}`} />
+                    <p className="text-2xl font-black text-white leading-none">{value}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</p>
                   </div>
-                  <div className="px-3 pb-4 space-y-2">
-                    {visibleAccounts.slice(0, 6).map((account) => (
-                      <LeadCard
-                        key={account.key}
-                        account={account}
-                        isSelected={selectedAccount?.key === account.key}
-                        onClick={() => setSelectedAccountKey(account.key)}
-                        onNavigate={() => setNavAccount(account)}
-                      />
-                    ))}
-                    {visibleAccounts.length === 0 && (
-                      <div className="rounded-2xl border border-slate-800 p-8 text-center text-sm text-slate-500">
-                        No leads yet. Tap <strong className="text-white">+</strong> to add one.
-                      </div>
-                    )}
-                  </div>
-                </div>
+                ))}
+              </div>
+            )}
 
-                {/* Quick actions */}
-                <div className="grid grid-cols-3 gap-2">
-                  <label className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 cursor-pointer hover:bg-slate-900 transition">
-                    <Camera className="h-6 w-6 text-blue-400" />
-                    <span className="text-xs text-slate-300 font-medium text-center">Receipt</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => primaryLead && handleReceiptCapture(primaryLead, e.target.files?.[0])}
+            {/* Recent leads list */}
+            {!navAccount && (
+              <div className="lux-panel rounded-3xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                  <h2 className="text-base font-bold text-white">Recent Leads</h2>
+                  <button
+                    onClick={() => setActiveView("leads")}
+                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  >
+                    View all <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="px-3 pb-4 space-y-2">
+                  {visibleAccounts.slice(0, 6).map((account, i) => (
+                    <LeadCard
+                      key={account.key}
+                      account={account}
+                      isSelected={selectedAccount?.key === account.key && !navAccount}
+                      onClick={() => setSelectedAccountKey(account.key)}
+                      onNavigate={() => setNavAccount(account)}
                     />
-                  </label>
-                  <button
-                    onClick={() => setActiveView("intake")}
-                    className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 hover:bg-slate-900 transition"
-                  >
-                    <Inbox className="h-6 w-6 text-blue-400" />
-                    <span className="text-xs text-slate-300 font-medium">Intake</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveView("settings")}
-                    className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 hover:bg-slate-900 transition"
-                  >
-                    <Settings className="h-6 w-6 text-blue-400" />
-                    <span className="text-xs text-slate-300 font-medium">Settings</span>
-                  </button>
+                  ))}
+                  {visibleAccounts.length === 0 && (
+                    <div className="rounded-2xl border border-slate-800 p-8 text-center text-sm text-slate-500">
+                      No leads yet. Tap <strong className="text-white">+</strong> to add one.
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Quick actions row */}
+            {!navAccount && (
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 cursor-pointer hover:bg-slate-900 transition">
+                  <Camera className="h-6 w-6 text-blue-400" />
+                  <span className="text-xs text-slate-300 font-medium text-center">Receipt</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => primaryLead && handleReceiptCapture(primaryLead, e.target.files?.[0])}
+                  />
+                </label>
+                <button
+                  onClick={() => setActiveView("intake")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 hover:bg-slate-900 transition"
+                >
+                  <Inbox className="h-6 w-6 text-blue-400" />
+                  <span className="text-xs text-slate-300 font-medium">Intake</span>
+                </button>
+                <button
+                  onClick={() => setActiveView("settings")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4 hover:bg-slate-900 transition"
+                >
+                  <Settings className="h-6 w-6 text-blue-400" />
+                  <span className="text-xs text-slate-300 font-medium">Settings</span>
+                </button>
+              </div>
             )}
           </section>
         )}
 
-        {/* ── INTAKE ── */}
+        {/* ══════════════════ INTAKE ══════════════════ */}
         {activeView === "intake" && (
-          <section className="lux-fade">
+          <section className="space-y-4 lux-fade">
             <div className="lux-panel rounded-3xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <button
@@ -641,9 +646,9 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── ADD LEAD ── */}
+        {/* ══════════════════ ADD LEAD ══════════════════ */}
         {activeView === "add" && (
-          <section className="lux-fade">
+          <section className="space-y-4 lux-fade">
             <div className="lux-panel rounded-3xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <button
@@ -663,7 +668,7 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── LEADS ── */}
+        {/* ══════════════════ LEADS ══════════════════ */}
         {activeView === "leads" && (
           <section className="space-y-4 lux-fade">
             <div className="lux-panel rounded-3xl overflow-hidden">
@@ -684,9 +689,9 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── REPORTS ── */}
+        {/* ══════════════════ REPORTS ══════════════════ */}
         {activeView === "reports" && (
-          <section className="lux-fade">
+          <section className="space-y-4 lux-fade">
             <div className="lux-panel rounded-3xl overflow-hidden">
               <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                 <button
@@ -704,9 +709,9 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── SETTINGS ── */}
+        {/* ══════════════════ SETTINGS ══════════════════ */}
         {activeView === "settings" && (
-          <section className="lux-fade">
+          <section className="space-y-4 lux-fade">
             <div className="lux-panel rounded-3xl p-5 space-y-4">
               <div className="flex items-center gap-3">
                 <button
@@ -782,7 +787,7 @@ const Index = () => {
         )}
       </main>
 
-      {/* Bottom Nav */}
+      {/* ── Bottom Nav ── */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800/80 bg-[#03101f]/96 px-4 pb-5 pt-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-lg grid-cols-5 items-end gap-1">
           {bottomNav.map(({ key, label, icon: Icon, center }) => (
