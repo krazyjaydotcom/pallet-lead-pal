@@ -4,21 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  AlertCircle,
-  CalendarClock,
+  BarChart3,
+  Bell,
+  Calendar,
   Camera,
-  CheckCircle2,
+  ChevronRight,
+  CircleSlash,
+  Clock,
   Copy,
+  Download,
+  FileText,
   Inbox,
-  Link2,
+  LayoutGrid,
+  List,
   LogOut,
   Mail,
-  MessageSquare,
+  MessageCircle,
+  Package,
+  Phone,
+  Plus,
   Search,
+  Settings,
+  SlidersHorizontal,
+  Sun,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { LeadTable } from "@/components/LeadTable";
 import ChartsDashboard from "@/components/ChartsDashboard";
@@ -28,6 +40,8 @@ import { LeadEntryForm } from "@/components/LeadEntryForm";
 import { Lead } from "@/types/Lead";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeads } from "@/hooks/useLeads";
+
+type ViewKey = "dashboard" | "intake" | "add" | "leads" | "reports" | "settings";
 
 type AccountGroup = {
   key: string;
@@ -48,6 +62,13 @@ const tomorrowIso = () => {
   const date = new Date();
   date.setDate(date.getDate() + 1);
   return date.toISOString().split("T")[0];
+};
+
+const prettyTime = (date?: string | null) => {
+  if (!date) return "No Next Step";
+  if (date <= todayIso()) return "Today";
+  if (date === tomorrowIso()) return "Tomorrow";
+  return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 const normalizeEmail = (email?: string | null) => (email || "").trim().toLowerCase();
@@ -79,6 +100,15 @@ const uniqueValues = (values: string[]) => Array.from(new Set(values.map((value)
 
 const sourceFromTags = (lead: Lead) =>
   lead.source || lead.tags.find((tag) => tag.startsWith("source:"))?.replace("source:", "") || "manual";
+
+const initialsFor = (label: string) =>
+  label
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "PP";
 
 const buildAccounts = (leads: Lead[]): AccountGroup[] => {
   const groups = new Map<string, AccountGroup>();
@@ -171,10 +201,21 @@ const parseSwipePagesEmail = (text: string): Partial<Lead> => {
   };
 };
 
+const StatusPill = ({ children, tone = "blue" }: { children: React.ReactNode; tone?: "blue" | "slate" | "amber" }) => {
+  const tones = {
+    blue: "bg-blue-500/90 text-white shadow-[0_0_24px_rgba(37,99,235,.26)]",
+    slate: "bg-slate-700/70 text-slate-100",
+    amber: "bg-amber-500/90 text-slate-950",
+  };
+
+  return <span className={`rounded-md px-3 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+};
+
 const Index = () => {
   const { loading, signOut, isAuthenticated } = useAuth();
   const { leads, loading: leadsLoading, addLeads, updateLead, deleteLead } = useLeads();
   const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<ViewKey>("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -213,6 +254,7 @@ const Index = () => {
   ).length;
   const stuckDeals = accounts.filter((account) => !account.nextFollowUp && account.status !== "Client").length;
   const receiptQueue = leads.filter((lead) => lead.tags.includes("receipt-photo")).length;
+  const newLeads = accounts.filter((account) => account.status === "New").length;
 
   const handleCSVImport = (importedLeads: Lead[]) => {
     addLeads(
@@ -262,6 +304,7 @@ const Index = () => {
       }),
     ]);
     setSwipeEmailText("");
+    setActiveView("dashboard");
   };
 
   const updateLeadWorkflow = (lead: Lead, changes: Partial<Lead>, successMessage: string) => {
@@ -289,9 +332,9 @@ const Index = () => {
 
   if (loading || leadsLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+      <div className="min-h-screen bg-[#020914] text-white flex items-center justify-center">
+        <div className="text-center animate-[fadeUp_.5s_ease_both]">
+          <div className="mx-auto h-10 w-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
           <p className="mt-3 text-sm text-slate-300">Loading CRM...</p>
         </div>
       </div>
@@ -302,445 +345,479 @@ const Index = () => {
     return null;
   }
 
+  const stats = [
+    { label: "Accounts", value: accounts.length, note: "Total", icon: Users },
+    { label: "Need Reply", value: needsReply, note: "Waiting on you", icon: MessageCircle },
+    { label: "Due Today", value: dueToday, note: "Follow ups due", icon: Calendar },
+    { label: "Receipts", value: receiptQueue, note: "Need review", icon: FileText },
+  ];
+
+  const glance = [
+    { label: "New Leads", value: newLeads, icon: UserPlus },
+    { label: "Need Reply", value: needsReply, icon: MessageCircle },
+    { label: "Due Today", value: dueToday, icon: Calendar },
+    { label: "Receipts", value: receiptQueue, icon: FileText },
+    { label: "No Next Step", value: stuckDeals, icon: CircleSlash },
+  ];
+
+  const bottomNav = [
+    { key: "dashboard" as ViewKey, label: "Dashboard", icon: LayoutGrid },
+    { key: "intake" as ViewKey, label: "Intake", icon: Download },
+    { key: "add" as ViewKey, label: "Add Lead", icon: Plus, center: true },
+    { key: "leads" as ViewKey, label: "Leads", icon: Users },
+    { key: "reports" as ViewKey, label: "Reports", icon: BarChart3 },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-7xl space-y-4 p-3 sm:p-5">
-        <header className="flex flex-col gap-3 rounded-md border border-slate-800 bg-slate-900/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-normal text-white sm:text-3xl">Pallet Business CRM</h1>
-              <Badge className="bg-red-600 text-white hover:bg-red-600">Flywheel</Badge>
+    <div className="min-h-screen bg-[#020914] text-slate-100">
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes softPulse {
+          0%, 100% { opacity: .55; transform: scale(1); }
+          50% { opacity: .9; transform: scale(1.04); }
+        }
+        .lux-panel {
+          background: linear-gradient(145deg, rgba(11, 27, 45, .92), rgba(3, 13, 26, .96));
+          border: 1px solid rgba(125, 169, 217, .18);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 20px 60px rgba(0,0,0,.22);
+        }
+        .lux-card {
+          background: linear-gradient(145deg, rgba(15, 35, 57, .84), rgba(4, 16, 30, .92));
+          border: 1px solid rgba(127, 174, 225, .17);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 12px 34px rgba(0, 0, 0, .2);
+        }
+        .lux-glow {
+          box-shadow: 0 0 0 1px rgba(0, 128, 255, .9), 0 0 38px rgba(0, 119, 255, .18), inset 0 1px 0 rgba(255,255,255,.05);
+        }
+        .lux-fade {
+          animation: fadeUp .48s ease both;
+        }
+      `}</style>
+
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute -top-28 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl animate-[softPulse_5s_ease-in-out_infinite]" />
+        <div className="absolute top-1/3 right-0 h-72 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-80 w-56 rounded-full bg-blue-700/12 blur-3xl" />
+      </div>
+
+      <main className="relative mx-auto min-h-screen max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+        <header className="mb-6 flex items-center justify-between lux-fade">
+          <div className="flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-200 to-orange-500 shadow-[0_16px_42px_rgba(245,158,11,.22)]">
+              <Package className="h-7 w-7 text-slate-950" />
             </div>
-            <p className="mt-1 text-sm text-slate-300">Accounts, replies, receipts, and follow-ups in one queue.</p>
+            <div>
+              <h1 className="text-3xl font-black tracking-normal text-white sm:text-4xl">
+                Pallet Pros <span className="text-blue-500">CRM</span>
+              </h1>
+              <p className="hidden text-sm text-slate-400 sm:block">Mobile-first deal command center</p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:flex">
-            <LeadEntryForm
-              onAddLead={(lead) =>
-                addLeads([{ ...lead, source: "manual", tags: uniqueValues([...(lead.tags || []), "source:manual"]) }])
-              }
-            />
-            <CSVImporter onImport={handleCSVImport} existingLeads={leads} />
-            <Button
-              variant="outline"
-              onClick={() => navigate("/inbox")}
-              className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveView(activeView === "settings" ? "dashboard" : "settings")}
+              className="grid h-14 w-14 place-items-center rounded-full border border-slate-700/70 bg-slate-900/70 shadow-xl transition hover:border-blue-500/60 hover:bg-slate-800"
+              aria-label="Search and settings"
             >
-              <Inbox className="mr-2 h-4 w-4" />
-              Inbox
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/settings")}
-              className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+              <Search className="h-6 w-6 text-slate-100" />
+            </button>
+            <button
+              onClick={() => setActiveView(activeView === "settings" ? "dashboard" : "settings")}
+              className="relative grid h-14 w-14 place-items-center rounded-full border border-slate-700/70 bg-slate-900/70 shadow-xl transition hover:border-blue-500/60 hover:bg-slate-800"
+              aria-label="Notifications"
             >
-              Settings
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSignOut}
-              className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+              <Bell className="h-6 w-6 text-slate-100" />
+              {needsReply > 0 && (
+                <span className="absolute -right-1 -top-1 grid h-7 min-w-7 place-items-center rounded-full bg-blue-600 px-2 text-xs font-bold text-white">
+                  {needsReply}
+                </span>
+              )}
+            </button>
           </div>
         </header>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            { label: "Accounts", value: accounts.length, icon: Link2, tone: "text-sky-300" },
-            { label: "Need Reply", value: needsReply, icon: Inbox, tone: "text-red-300" },
-            { label: "Due Today", value: dueToday, icon: CalendarClock, tone: "text-amber-300" },
-            { label: "Receipts", value: receiptQueue, icon: Camera, tone: "text-emerald-300" },
-          ].map((item) => (
-            <Card key={item.label} className="border-slate-800 bg-slate-900 text-slate-100">
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">{item.label}</p>
-                  <p className={`text-2xl font-bold ${item.tone}`}>{item.value}</p>
-                </div>
-                <item.icon className={`h-5 w-5 ${item.tone}`} />
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
-        <Tabs defaultValue="flywheel" className="space-y-4">
-          <TabsList className="grid h-auto grid-cols-2 bg-slate-900 p-1 sm:grid-cols-4">
-            <TabsTrigger value="flywheel">Flywheel</TabsTrigger>
-            <TabsTrigger value="intake">Website Intake</TabsTrigger>
-            <TabsTrigger value="leads">Lead Table</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="flywheel" className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-[360px_1fr]">
-              <Card className="border-slate-800 bg-slate-900 text-slate-100">
-                <CardHeader className="space-y-3 p-4">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Search className="h-4 w-4 text-red-400" />
-                    Account Queue
-                  </CardTitle>
-                  <div className="grid gap-2">
-                    <Input
-                      placeholder="Search account, email, phone..."
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      className="border-slate-700 bg-slate-950 text-slate-100"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                        className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
-                      >
-                        <option value="all">All Status</option>
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="Client">Client</option>
-                      </select>
-                      <select
-                        value={sourceFilter}
-                        onChange={(event) => setSourceFilter(event.target.value)}
-                        className="h-10 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
-                      >
-                        <option value="all">All Sources</option>
-                        <option value="manual">Manual</option>
-                        <option value="swipe-pages">Swipe Pages</option>
-                        <option value="email">Email</option>
-                        <option value="quo">Quo</option>
-                        <option value="quickbooks">QuickBooks</option>
-                        <option value="csv">CSV</option>
-                      </select>
+        {activeView === "dashboard" && (
+          <section className="space-y-4 lux-fade">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {stats.map((item, index) => (
+                <Card
+                  key={item.label}
+                  className="lux-card rounded-2xl text-slate-100"
+                  style={{ animationDelay: `${index * 45}ms` }}
+                >
+                  <CardContent className="flex min-h-[138px] flex-col justify-between p-4 sm:p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-12 w-12 place-items-center rounded-full bg-blue-600 shadow-[0_0_32px_rgba(37,99,235,.42)]">
+                        <item.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <p className="text-base font-medium text-slate-100">{item.label}</p>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="max-h-[620px] space-y-2 overflow-y-auto p-3 pt-0">
-                  {visibleAccounts.map((account) => (
+                    <div>
+                      <p className="text-4xl font-bold tracking-normal text-slate-100">{item.value}</p>
+                      <p className="mt-1 text-sm text-slate-400">{item.note}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="space-y-4 p-4 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-2xl">
+                    Account Queue
+                    <span className="rounded-full bg-blue-600/20 px-2 py-1 text-sm font-bold text-blue-400">
+                      {needsReply}
+                    </span>
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveView("settings")}
+                    className="h-11 rounded-xl border-slate-700/70 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
+                  >
+                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    Filters
+                  </Button>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search accounts, contacts, emails..."
+                    className="h-16 rounded-xl border-slate-700/80 bg-slate-950/60 pl-12 text-base text-slate-100 placeholder:text-slate-400 focus-visible:ring-blue-500"
+                  />
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-3 p-3 pt-0 sm:p-4 sm:pt-0">
+                {visibleAccounts.slice(0, 5).map((account, index) => {
+                  const isSelected = selectedAccount?.key === account.key || (!selectedAccountKey && index === 0);
+                  const firstLead = account.leads[0];
+                  const tag =
+                    account.status === "Client"
+                      ? "Client"
+                      : account.nextFollowUp && account.nextFollowUp <= todayIso()
+                        ? "Due Today"
+                        : account.status === "New"
+                          ? "New Lead"
+                          : "Waiting";
+
+                  return (
                     <button
                       key={account.key}
                       onClick={() => setSelectedAccountKey(account.key)}
-                      className={`w-full rounded-md border p-3 text-left transition ${
-                        selectedAccount?.key === account.key
-                          ? "border-red-500 bg-red-950/30"
-                          : "border-slate-800 bg-slate-950 hover:border-slate-700"
-                      }`}
+                      className={`relative w-full rounded-2xl p-4 text-left transition duration-300 ${isSelected ? "lux-glow bg-blue-950/20" : "border border-slate-800/90 bg-slate-950/35 hover:border-blue-500/40"}`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-white">{account.label}</p>
-                          <p className="text-xs text-slate-400">
-                            {account.emails[0] || account.phones[0] || "No contact yet"}
-                          </p>
+                      {isSelected && (
+                        <span className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-blue-500 shadow-[0_0_18px_rgba(37,99,235,.8)]" />
+                      )}
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`grid h-20 w-20 shrink-0 place-items-center rounded-full text-2xl font-bold text-white ${isSelected ? "bg-blue-600" : "bg-slate-700/80"}`}
+                        >
+                          {initialsFor(account.label)}
                         </div>
-                        <Badge variant="outline" className="border-slate-700 text-slate-200">
-                          {account.status}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {account.sources.map((source) => (
-                          <Badge key={source} className="bg-slate-800 text-slate-200 hover:bg-slate-800">
-                            {source}
-                          </Badge>
-                        ))}
-                        {account.nextFollowUp && (
-                          <Badge className="bg-amber-500 text-slate-950 hover:bg-amber-500">
-                            {account.nextFollowUp}
-                          </Badge>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {[
-                    { label: "New Leads", count: accounts.filter((account) => account.status === "New").length },
-                    { label: "Waiting", count: accounts.filter((account) => account.status === "Contacted").length },
-                    { label: "No Next Step", count: stuckDeals },
-                    { label: "Clients", count: accounts.filter((account) => account.status === "Client").length },
-                  ].map((lane) => (
-                    <Card key={lane.label} className="border-slate-800 bg-slate-900 text-slate-100">
-                      <CardContent className="p-3">
-                        <p className="text-xs text-slate-400">{lane.label}</p>
-                        <p className="text-xl font-bold text-white">{lane.count}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                {selectedAccount && primaryLead ? (
-                  <Card className="border-slate-800 bg-slate-900 text-slate-100">
-                    <CardHeader className="p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <CardTitle className="text-xl text-white">{selectedAccount.label}</CardTitle>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xl font-bold text-white">{account.label}</p>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {selectedAccount.emails.map((email) => (
-                              <Badge key={email} variant="outline" className="border-slate-700 text-slate-200">
-                                {email}
-                              </Badge>
-                            ))}
-                            {selectedAccount.phones.map((phone) => (
-                              <Badge key={phone} variant="outline" className="border-slate-700 text-slate-200">
-                                {phone}
-                              </Badge>
-                            ))}
+                            <StatusPill tone={tag === "Due Today" ? "blue" : tag === "No Next Step" ? "slate" : "blue"}>
+                              {tag}
+                            </StatusPill>
+                            <StatusPill tone="slate">
+                              {account.tags.find((tag) => !tag.startsWith("source:")) ||
+                                account.sources[0] ||
+                                "Industrial"}
+                            </StatusPill>
+                          </div>
+                          <div className="mt-3 flex gap-4 text-slate-300">
+                            <Mail className="h-5 w-5" />
+                            <Phone className="h-5 w-5" />
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 sm:flex">
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={() =>
-                              selectedAccount.emails[0] &&
-                              (window.location.href = `mailto:${selectedAccount.emails[0]}`)
-                            }
-                            disabled={!selectedAccount.emails[0]}
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Reply
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
-                            onClick={handleCopyEmails}
-                          >
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Emails
-                          </Button>
+                        <div className="hidden text-right sm:block">
+                          <p className="text-sm text-slate-400">Next:</p>
+                          <p className="mt-2 text-blue-400">{prettyTime(account.nextFollowUp)}</p>
                         </div>
+                        <ChevronRight className="h-7 w-7 text-slate-300" />
                       </div>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 p-4 pt-0 lg:grid-cols-[1fr_320px]">
-                      <div className="space-y-3">
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          <Button
-                            variant="outline"
-                            className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
-                            onClick={() =>
-                              updateLeadWorkflow(
-                                primaryLead,
-                                {
-                                  status: "Contacted",
-                                  lastContact: todayIso(),
-                                  tags: primaryLead.tags.filter((tag) => tag !== "needs-reply"),
-                                },
-                                "Marked contacted",
-                              )
-                            }
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Contacted
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
-                            onClick={() =>
-                              updateLeadWorkflow(
-                                primaryLead,
-                                {
-                                  followUpDate: tomorrowIso(),
-                                  nextAction: "Follow up tomorrow",
-                                  tags: uniqueValues([...primaryLead.tags, "follow-up"]),
-                                },
-                                "Follow-up set for tomorrow",
-                              )
-                            }
-                          >
-                            <CalendarClock className="mr-2 h-4 w-4" />
-                            Tomorrow
-                          </Button>
-                          <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-700 bg-slate-950 px-4 text-sm font-medium text-slate-100 hover:bg-slate-800">
-                            <Camera className="mr-2 h-4 w-4" />
-                            Receipt
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              className="hidden"
-                              onChange={(event) => handleReceiptCapture(primaryLead, event.target.files?.[0])}
-                            />
-                          </label>
-                        </div>
+                    </button>
+                  );
+                })}
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <Card className="border-slate-800 bg-slate-950 text-slate-100">
-                            <CardHeader className="p-3">
-                              <CardTitle className="flex items-center gap-2 text-sm">
-                                <MessageSquare className="h-4 w-4 text-red-400" />
-                                Timeline
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3 p-3 pt-0">
-                              {selectedAccount.leads.map((lead) => (
-                                <div key={lead.id} className="rounded-md border border-slate-800 bg-slate-900 p-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-medium">{lead.name || lead.company || "Lead"}</p>
-                                    <Badge className="bg-slate-800 text-slate-200 hover:bg-slate-800">
-                                      {sourceFromTags(lead)}
-                                    </Badge>
-                                  </div>
-                                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-300">
-                                    {lead.notes || lead.palletNeeds || "No notes yet"}
-                                  </p>
-                                </div>
-                              ))}
-                            </CardContent>
-                          </Card>
-
-                          <Card className="border-slate-800 bg-slate-950 text-slate-100">
-                            <CardHeader className="p-3">
-                              <CardTitle className="flex items-center gap-2 text-sm">
-                                <AlertCircle className="h-4 w-4 text-amber-300" />
-                                Deal Guardrails
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2 p-3 pt-0 text-sm">
-                              <div className="flex items-center justify-between rounded-md bg-slate-900 p-2">
-                                <span className="text-slate-300">Next action</span>
-                                <span className="font-medium text-white">
-                                  {primaryLead.nextAction || (primaryLead.followUpDate ? "Follow up" : "Missing")}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between rounded-md bg-slate-900 p-2">
-                                <span className="text-slate-300">Follow-up</span>
-                                <span className="font-medium text-white">{primaryLead.followUpDate || "Not set"}</span>
-                              </div>
-                              <div className="flex items-center justify-between rounded-md bg-slate-900 p-2">
-                                <span className="text-slate-300">Receipts</span>
-                                <span className="font-medium text-white">
-                                  {primaryLead.tags.includes("receipt-photo") ? "Review" : "None"}
-                                </span>
-                              </div>
-                              {receiptPreviews[primaryLead.id] && (
-                                <img
-                                  src={receiptPreviews[primaryLead.id]}
-                                  alt="Receipt preview"
-                                  className="mt-2 aspect-video w-full rounded-md object-cover"
-                                />
-                              )}
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
-
-                      <Card className="border-slate-800 bg-slate-950 text-slate-100">
-                        <CardHeader className="p-3">
-                          <CardTitle className="text-sm">Integrations</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 p-3 pt-0">
-                          {[
-                            {
-                              label: "Swipe Pages",
-                              value: selectedAccount.sources.includes("swipe-pages") ? "Connected by source" : "Ready",
-                            },
-                            { label: "Email", value: selectedAccount.emails.length ? "Replyable" : "Missing" },
-                            {
-                              label: "Quo",
-                              value: selectedAccount.phones.length ? "Phone match ready" : "Needs phone",
-                            },
-                            {
-                              label: "QuickBooks",
-                              value: primaryLead.status === "Client" ? "Customer ready" : "Lead stage",
-                            },
-                          ].map((item) => (
-                            <div
-                              key={item.label}
-                              className="flex items-center justify-between rounded-md border border-slate-800 p-2"
-                            >
-                              <span className="text-sm text-slate-300">{item.label}</span>
-                              <Badge variant="outline" className="border-slate-700 text-slate-200">
-                                {item.value}
-                              </Badge>
-                            </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="border-slate-800 bg-slate-900 text-slate-100">
-                    <CardContent className="p-6 text-center text-slate-300">
-                      No accounts match the current filters.
-                    </CardContent>
-                  </Card>
+                {visibleAccounts.length === 0 && (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-8 text-center text-slate-400">
+                    No accounts match the current filters.
+                  </div>
                 )}
-              </div>
-            </div>
-          </TabsContent>
 
-          <TabsContent value="intake" className="grid gap-3 lg:grid-cols-[1fr_360px]">
-            <Card className="border-slate-800 bg-slate-900 text-slate-100">
-              <CardHeader className="p-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <UserPlus className="h-4 w-4 text-red-400" />
-                  Swipe Pages Intake
+                <button
+                  onClick={() => setActiveView("leads")}
+                  className="flex w-full items-center justify-between border-t border-slate-800 px-4 py-5 text-slate-300"
+                >
+                  <span className="flex items-center gap-3 text-lg">
+                    <List className="h-5 w-5" /> View all accounts
+                  </span>
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              </CardContent>
+            </Card>
+
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-4 sm:p-5">
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <Sun className="h-6 w-6 text-slate-300" /> Today at a Glance
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 p-4 pt-0">
+              <CardContent className="grid grid-cols-5 gap-1 p-4 pt-0">
+                {glance.map((item) => (
+                  <div key={item.label} className="border-r border-slate-700/70 px-2 last:border-r-0">
+                    <item.icon className="mb-2 h-6 w-6 text-blue-500" />
+                    <p className="min-h-9 text-xs text-slate-300">{item.label}</p>
+                    <p className="text-3xl font-bold text-slate-100">{item.value}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-4 sm:p-5">
+                <CardTitle className="text-2xl">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 p-4 pt-0 lg:grid-cols-4">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3">
+                  <LeadEntryForm
+                    onAddLead={(lead) =>
+                      addLeads([
+                        { ...lead, source: "manual", tags: uniqueValues([...(lead.tags || []), "source:manual"]) },
+                      ])
+                    }
+                  />
+                </div>
+                <Button
+                  onClick={() => setActiveView("intake")}
+                  variant="outline"
+                  className="h-20 rounded-2xl border-slate-800 bg-slate-950/35 text-base text-slate-100 hover:bg-slate-800"
+                >
+                  <Download className="mr-3 h-7 w-7 text-blue-500" /> Intake
+                </Button>
+                <label className="flex h-20 cursor-pointer items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/35 text-base font-medium text-slate-100 hover:bg-slate-800">
+                  <Camera className="mr-3 h-7 w-7 text-blue-500" />
+                  Upload Receipt
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(event) => primaryLead && handleReceiptCapture(primaryLead, event.target.files?.[0])}
+                  />
+                </label>
+                <Button
+                  onClick={() => setActiveView("leads")}
+                  variant="outline"
+                  className="h-20 rounded-2xl border-slate-800 bg-slate-950/35 text-base text-slate-100 hover:bg-slate-800"
+                >
+                  <Clock className="mr-3 h-7 w-7 text-blue-500" /> Follow Ups
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {activeView === "intake" && (
+          <section className="space-y-4 lux-fade">
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-5">
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <Inbox className="h-6 w-6 text-blue-500" /> Website Intake
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-5 pt-0">
                 <textarea
                   value={swipeEmailText}
                   onChange={(event) => setSwipeEmailText(event.target.value)}
                   placeholder="Paste the Swipe Pages form notification email here..."
-                  className="min-h-[220px] w-full rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100 outline-none focus:border-red-500"
+                  className="min-h-[260px] w-full rounded-2xl border border-slate-700 bg-slate-950/70 p-4 text-base text-slate-100 outline-none transition focus:border-blue-500"
                 />
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button onClick={handleSwipeEmailImport} className="bg-red-600 hover:bg-red-700">
-                    <Inbox className="mr-2 h-4 w-4" />
-                    Add to CRM
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
-                    onClick={() => setSwipeEmailText("")}
-                  >
-                    Clear
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleSwipeEmailImport}
+                  className="h-14 w-full rounded-2xl bg-blue-600 text-base hover:bg-blue-700"
+                >
+                  <Inbox className="mr-2 h-5 w-5" />
+                  Add to CRM
+                </Button>
               </CardContent>
             </Card>
+          </section>
+        )}
 
-            <Card className="border-slate-800 bg-slate-900 text-slate-100">
-              <CardHeader className="p-4">
-                <CardTitle className="text-base">Webhook Field Map</CardTitle>
+        {activeView === "add" && (
+          <section className="space-y-4 lux-fade">
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-5">
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <Plus className="h-6 w-6 text-blue-500" /> Add Lead
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 p-4 pt-0">
-                {["name", "email", "phone", "company", "pallet_needs", "message", "source"].map((field) => (
-                  <div
-                    key={field}
-                    className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-sm text-slate-200"
-                  >
-                    {field}
-                  </div>
-                ))}
-                <p className="text-xs leading-5 text-slate-400">
-                  Use the current email parser until the public webhook function is exposed for direct editing.
+              <CardContent className="space-y-4 p-5 pt-0">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+                  <LeadEntryForm
+                    onAddLead={(lead) =>
+                      addLeads([
+                        { ...lead, source: "manual", tags: uniqueValues([...(lead.tags || []), "source:manual"]) },
+                      ])
+                    }
+                  />
+                </div>
+                <p className="text-sm text-slate-400">
+                  Use the Add Lead button above for manual capture. Website form capture lives under Intake.
                 </p>
               </CardContent>
             </Card>
-          </TabsContent>
+          </section>
+        )}
 
-          <TabsContent value="leads" className="space-y-4">
-            <Card className="border-slate-800 bg-slate-900 text-slate-100">
-              <CardHeader className="p-4">
-                <CardTitle className="text-base">Lead Records</CardTitle>
+        {activeView === "leads" && (
+          <section className="space-y-4 lux-fade">
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-5">
+                <CardTitle className="text-2xl">Lead Records</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
+              <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">
                 <LeadTable leads={leads} onUpdateLead={updateLead} onDeleteLead={deleteLead} />
               </CardContent>
             </Card>
             <ClientsTracker leads={leads} onUpdateLead={updateLead} />
-          </TabsContent>
+          </section>
+        )}
 
-          <TabsContent value="analytics">
-            <ChartsDashboard leads={leads} />
-          </TabsContent>
-        </Tabs>
-      </div>
+        {activeView === "reports" && (
+          <section className="space-y-4 lux-fade">
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-5">
+                <CardTitle className="text-2xl">Reports</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">
+                <ChartsDashboard leads={leads} />
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {activeView === "settings" && (
+          <section className="space-y-4 lux-fade">
+            <Card className="lux-panel rounded-2xl text-slate-100">
+              <CardHeader className="p-5">
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <Settings className="h-6 w-6 text-blue-500" /> Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-5 pt-0">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+                    <p className="mb-3 text-lg font-semibold">Data Import</p>
+                    <CSVImporter onImport={handleCSVImport} existingLeads={leads} />
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+                    <p className="mb-3 text-lg font-semibold">Account Tools</p>
+                    <Button
+                      onClick={handleCopyEmails}
+                      variant="outline"
+                      className="w-full border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Visible Emails
+                    </Button>
+                  </div>
+                </div>
+
+                <Card className="border-slate-800 bg-slate-950/35 text-slate-100">
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-base">Integration Readiness</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-2 p-4 pt-0 sm:grid-cols-2">
+                    {[
+                      ["Swipe Pages", "Webhook endpoint ready"],
+                      ["Email", "Reply flow ready"],
+                      ["Quo", "Phone matching ready"],
+                      ["QuickBooks", "Receipt queue ready"],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 p-3"
+                      >
+                        <span className="text-slate-300">{label}</span>
+                        <Badge variant="outline" className="border-slate-700 text-slate-100">
+                          {value}
+                        </Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    className="h-12 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="New">New</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Client">Client</option>
+                  </select>
+                  <select
+                    value={sourceFilter}
+                    onChange={(event) => setSourceFilter(event.target.value)}
+                    className="h-12 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="manual">Manual</option>
+                    <option value="swipe-pages">Swipe Pages</option>
+                    <option value="email">Email</option>
+                    <option value="quo">Quo</option>
+                    <option value="quickbooks">QuickBooks</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </div>
+
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  className="h-12 w-full rounded-xl border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+      </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800/90 bg-[#03101f]/95 px-3 pb-4 pt-2 backdrop-blur-xl">
+        <div className="mx-auto grid max-w-2xl grid-cols-5 items-end gap-1">
+          {bottomNav.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setActiveView(item.key)}
+              className={`flex flex-col items-center justify-end gap-1 rounded-2xl py-2 text-xs transition duration-300 ${
+                activeView === item.key ? "text-blue-500" : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <span
+                className={`${item.center ? "-mt-8 grid h-16 w-16 place-items-center rounded-full bg-blue-600 text-white shadow-[0_16px_42px_rgba(37,99,235,.45)]" : ""}`}
+              >
+                <item.icon className={`${item.center ? "h-9 w-9" : "h-7 w-7"}`} />
+              </span>
+              <span className="text-[13px] sm:text-sm">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };
