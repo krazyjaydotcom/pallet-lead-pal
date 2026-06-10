@@ -6,29 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  BarChart3,
   Bell,
-  Calendar,
   Camera,
   ChevronRight,
-  CircleSlash,
+  Inbox,
+  Link2,
   Clock,
   Copy,
-  Download,
-  FileText,
-  Inbox,
-  LayoutGrid,
   List,
   LogOut,
   Mail,
-  MessageCircle,
-  Package,
   Phone,
   Plus,
   Search,
   Settings,
-  SlidersHorizontal,
-  Sun,
+  BarChart3,
+  CalendarClock,
+  MessageSquare,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -347,22 +341,22 @@ const Index = () => {
 
   const stats = [
     { label: "Accounts", value: accounts.length, note: "Total", icon: Users },
-    { label: "Need Reply", value: needsReply, note: "Waiting on you", icon: MessageCircle },
-    { label: "Due Today", value: dueToday, note: "Follow ups due", icon: Calendar },
-    { label: "Receipts", value: receiptQueue, note: "Need review", icon: FileText },
+    { label: "Need Reply", value: needsReply, note: "Waiting on you", icon: MessageSquare },
+    { label: "Due Today", value: dueToday, note: "Follow ups due", icon: CalendarClock },
+    { label: "Receipts", value: receiptQueue, note: "Need review", icon: Inbox },
   ];
 
   const glance = [
     { label: "New Leads", value: newLeads, icon: UserPlus },
-    { label: "Need Reply", value: needsReply, icon: MessageCircle },
-    { label: "Due Today", value: dueToday, icon: Calendar },
-    { label: "Receipts", value: receiptQueue, icon: FileText },
-    { label: "No Next Step", value: stuckDeals, icon: CircleSlash },
+    { label: "Need Reply", value: needsReply, icon: MessageSquare },
+    { label: "Due Today", value: dueToday, icon: CalendarClock },
+    { label: "Receipts", value: receiptQueue, icon: Inbox },
+    { label: "No Next Step", value: stuckDeals, icon: Clock },
   ];
 
   const bottomNav = [
-    { key: "dashboard" as ViewKey, label: "Dashboard", icon: LayoutGrid },
-    { key: "intake" as ViewKey, label: "Intake", icon: Download },
+    { key: "dashboard" as ViewKey, label: "Dashboard", icon: BarChart3 },
+    { key: "intake" as ViewKey, label: "Intake", icon: Inbox },
     { key: "add" as ViewKey, label: "Add Lead", icon: Plus, center: true },
     { key: "leads" as ViewKey, label: "Leads", icon: Users },
     { key: "reports" as ViewKey, label: "Reports", icon: BarChart3 },
@@ -407,7 +401,7 @@ const Index = () => {
         <header className="mb-6 flex items-center justify-between lux-fade">
           <div className="flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-200 to-orange-500 shadow-[0_16px_42px_rgba(245,158,11,.22)]">
-              <Package className="h-7 w-7 text-slate-950" />
+              <Link2 className="h-7 w-7 text-slate-950" />
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-normal text-white sm:text-4xl">
@@ -478,7 +472,7 @@ const Index = () => {
                     onClick={() => setActiveView("settings")}
                     className="h-11 rounded-xl border-slate-700/70 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
                   >
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    <Settings className="mr-2 h-4 w-4" />
                     Filters
                   </Button>
                 </div>
@@ -569,7 +563,7 @@ const Index = () => {
             <Card className="lux-panel rounded-2xl text-slate-100">
               <CardHeader className="p-4 sm:p-5">
                 <CardTitle className="flex items-center gap-3 text-2xl">
-                  <Sun className="h-6 w-6 text-slate-300" /> Today at a Glance
+                  <Clock className="h-6 w-6 text-slate-300" /> Today at a Glance
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-5 gap-1 p-4 pt-0">
@@ -602,7 +596,7 @@ const Index = () => {
                   variant="outline"
                   className="h-20 rounded-2xl border-slate-800 bg-slate-950/35 text-base text-slate-100 hover:bg-slate-800"
                 >
-                  <Download className="mr-3 h-7 w-7 text-blue-500" /> Intake
+                  <Inbox className="mr-3 h-7 w-7 text-blue-500" /> Intake
                 </Button>
                 <label className="flex h-20 cursor-pointer items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/35 text-base font-medium text-slate-100 hover:bg-slate-800">
                   <Camera className="mr-3 h-7 w-7 text-blue-500" />
