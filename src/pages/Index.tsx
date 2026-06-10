@@ -20,7 +20,6 @@ import {
   Plus,
   Search,
   Settings,
-  BarChart3,
   CalendarClock,
   MessageSquare,
   UserPlus,
@@ -371,11 +370,11 @@ const Index = () => {
   ];
 
   const bottomNav: NavItem[] = [
-    { key: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { key: "dashboard", label: "Dashboard", icon: Inbox },
     { key: "intake", label: "Intake", icon: Inbox },
     { key: "add", label: "Add Lead", icon: Plus, center: true },
     { key: "leads", label: "Leads", icon: Users },
-    { key: "reports", label: "Reports", icon: BarChart3 },
+    { key: "reports", label: "Reports", icon: MessageSquare },
   ];
 
   return (
