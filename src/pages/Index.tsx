@@ -37,6 +37,22 @@ import { useLeads } from "@/hooks/useLeads";
 
 type ViewKey = "dashboard" | "intake" | "add" | "leads" | "reports" | "settings";
 
+type IconType = React.ComponentType<{ className?: string }>;
+
+type MetricItem = {
+  label: string;
+  value: number;
+  note?: string;
+  icon: IconType;
+};
+
+type NavItem = {
+  key: ViewKey;
+  label: string;
+  icon: IconType;
+  center?: boolean;
+};
+
 type AccountGroup = {
   key: string;
   label: string;
@@ -339,14 +355,14 @@ const Index = () => {
     return null;
   }
 
-  const stats = [
+  const stats: MetricItem[] = [
     { label: "Accounts", value: accounts.length, note: "Total", icon: Users },
     { label: "Need Reply", value: needsReply, note: "Waiting on you", icon: MessageSquare },
     { label: "Due Today", value: dueToday, note: "Follow ups due", icon: CalendarClock },
     { label: "Receipts", value: receiptQueue, note: "Need review", icon: Inbox },
   ];
 
-  const glance = [
+  const glance: MetricItem[] = [
     { label: "New Leads", value: newLeads, icon: UserPlus },
     { label: "Need Reply", value: needsReply, icon: MessageSquare },
     { label: "Due Today", value: dueToday, icon: CalendarClock },
@@ -354,12 +370,12 @@ const Index = () => {
     { label: "No Next Step", value: stuckDeals, icon: Clock },
   ];
 
-  const bottomNav = [
-    { key: "dashboard" as ViewKey, label: "Dashboard", icon: BarChart3 },
-    { key: "intake" as ViewKey, label: "Intake", icon: Inbox },
-    { key: "add" as ViewKey, label: "Add Lead", icon: Plus, center: true },
-    { key: "leads" as ViewKey, label: "Leads", icon: Users },
-    { key: "reports" as ViewKey, label: "Reports", icon: BarChart3 },
+  const bottomNav: NavItem[] = [
+    { key: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { key: "intake", label: "Intake", icon: Inbox },
+    { key: "add", label: "Add Lead", icon: Plus, center: true },
+    { key: "leads", label: "Leads", icon: Users },
+    { key: "reports", label: "Reports", icon: BarChart3 },
   ];
 
   return (
