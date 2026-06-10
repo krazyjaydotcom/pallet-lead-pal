@@ -322,6 +322,21 @@ const Index = () => {
             <CSVImporter onImport={handleCSVImport} existingLeads={leads} />
             <Button
               variant="outline"
+              onClick={() => navigate("/inbox")}
+              className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+            >
+              <Inbox className="mr-2 h-4 w-4" />
+              Inbox
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/settings")}
+              className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
+            >
+              Settings
+            </Button>
+            <Button
+              variant="outline"
               onClick={handleSignOut}
               className="border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800"
             >
