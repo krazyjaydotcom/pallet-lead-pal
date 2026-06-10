@@ -1,4 +1,3 @@
-
 export interface Lead {
   id: string;
   name: string;
@@ -6,19 +5,24 @@ export interface Lead {
   email: string;
   company: string;
   palletNeeds: string;
-  serviceType: 'delivery' | 'pickup' | 'both';
+  serviceType: "delivery" | "pickup" | "both";
   forklifitAccess: boolean;
   currentCustomer: boolean;
   date: string;
   submittedDate: string | null;
-  status: 'New' | 'Contacted' | 'Client';
+  status: "New" | "Contacted" | "Client";
   notes: string;
   tags: string[];
   lastContact: string | null;
   followUpDate: string | null;
+  source?: "manual" | "swipe-pages" | "email" | "quo" | "quickbooks" | "receipt" | "csv" | "unknown";
+  sourceDetails?: string;
+  accountKey?: string;
+  nextAction?: string;
+  dealValue?: number | null;
   ltvData?: {
     palletsPerMonth: number | null;
-    palletType: 'standard' | 'custom';
+    palletType: "standard" | "custom";
     pricePerPallet: number | null;
     notSure: boolean;
   };
