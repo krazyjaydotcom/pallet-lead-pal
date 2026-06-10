@@ -436,26 +436,29 @@ const Index = () => {
         {activeView === "dashboard" && (
           <section className="space-y-4 lux-fade">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {stats.map((item, index) => (
-                <Card
-                  key={item.label}
-                  className="lux-card rounded-2xl text-slate-100"
-                  style={{ animationDelay: `${index * 45}ms` }}
-                >
-                  <CardContent className="flex min-h-[138px] flex-col justify-between p-4 sm:p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-blue-600 shadow-[0_0_32px_rgba(37,99,235,.42)]">
-                        <item.icon className="h-6 w-6 text-white" />
+              {stats.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <Card
+                    key={item.label}
+                    className="lux-card rounded-2xl text-slate-100"
+                    style={{ animationDelay: `${index * 45}ms` }}
+                  >
+                    <CardContent className="flex min-h-[138px] flex-col justify-between p-4 sm:p-5">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-12 w-12 place-items-center rounded-full bg-blue-600 shadow-[0_0_32px_rgba(37,99,235,.42)]">
+                          <Icon className="h-6 w-6 text-white" />
+                        </div>
+                        <p className="text-base font-medium text-slate-100">{item.label}</p>
                       </div>
-                      <p className="text-base font-medium text-slate-100">{item.label}</p>
-                    </div>
-                    <div>
-                      <p className="text-4xl font-bold tracking-normal text-slate-100">{item.value}</p>
-                      <p className="mt-1 text-sm text-slate-400">{item.note}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div>
+                        <p className="text-4xl font-bold tracking-normal text-slate-100">{item.value}</p>
+                        <p className="mt-1 text-sm text-slate-400">{item.note}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             <Card className="lux-panel rounded-2xl text-slate-100">
@@ -567,13 +570,16 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-5 gap-1 p-4 pt-0">
-                {glance.map((item) => (
-                  <div key={item.label} className="border-r border-slate-700/70 px-2 last:border-r-0">
-                    <item.icon className="mb-2 h-6 w-6 text-blue-500" />
-                    <p className="min-h-9 text-xs text-slate-300">{item.label}</p>
-                    <p className="text-3xl font-bold text-slate-100">{item.value}</p>
-                  </div>
-                ))}
+                {glance.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="border-r border-slate-700/70 px-2 last:border-r-0">
+                      <Icon className="mb-2 h-6 w-6 text-blue-500" />
+                      <p className="min-h-9 text-xs text-slate-300">{item.label}</p>
+                      <p className="text-3xl font-bold text-slate-100">{item.value}</p>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 
@@ -794,22 +800,25 @@ const Index = () => {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800/90 bg-[#03101f]/95 px-3 pb-4 pt-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-2xl grid-cols-5 items-end gap-1">
-          {bottomNav.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setActiveView(item.key)}
-              className={`flex flex-col items-center justify-end gap-1 rounded-2xl py-2 text-xs transition duration-300 ${
-                activeView === item.key ? "text-blue-500" : "text-slate-300 hover:text-white"
-              }`}
-            >
-              <span
-                className={`${item.center ? "-mt-8 grid h-16 w-16 place-items-center rounded-full bg-blue-600 text-white shadow-[0_16px_42px_rgba(37,99,235,.45)]" : ""}`}
+          {bottomNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveView(item.key)}
+                className={`flex flex-col items-center justify-end gap-1 rounded-2xl py-2 text-xs transition duration-300 ${
+                  activeView === item.key ? "text-blue-500" : "text-slate-300 hover:text-white"
+                }`}
               >
-                <item.icon className={`${item.center ? "h-9 w-9" : "h-7 w-7"}`} />
-              </span>
-              <span className="text-[13px] sm:text-sm">{item.label}</span>
-            </button>
-          ))}
+                <span
+                  className={`${item.center ? "-mt-8 grid h-16 w-16 place-items-center rounded-full bg-blue-600 text-white shadow-[0_16px_42px_rgba(37,99,235,.45)]" : ""}`}
+                >
+                  <Icon className={`${item.center ? "h-9 w-9" : "h-7 w-7"}`} />
+                </span>
+                <span className="text-[13px] sm:text-sm">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
